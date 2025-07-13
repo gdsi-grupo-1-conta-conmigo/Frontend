@@ -18,7 +18,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface Field {
   name: string;
-  type: 'string' | 'int' | 'float' | 'boolean' | 'date';
+  type: 'string' | 'int' | 'float';
   display_unit?: string;
 }
 
@@ -31,7 +31,7 @@ export default function CreateTemplateScreen() {
   const { logout } = useAuth();
   const [templateName, setTemplateName] = useState('');
   const [fields, setFields] = useState<Field[]>([
-    { name: '', type: 'string', display_unit: '' }
+    { name: 'Cantidad', type: 'int', display_unit: '' }
   ]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -41,8 +41,6 @@ export default function CreateTemplateScreen() {
     { value: 'string', label: 'Texto' },
     { value: 'int', label: 'Número Entero' },
     { value: 'float', label: 'Número Decimal' },
-    { value: 'boolean', label: 'Sí/No' },
-    { value: 'date', label: 'Fecha' },
   ];
 
   const addField = () => {
@@ -50,6 +48,11 @@ export default function CreateTemplateScreen() {
   };
 
   const removeField = (index: number) => {
+    // No permitir eliminar el primer campo (Cantidad)
+    if (index === 0) {
+      return;
+    }
+    
     if (fields.length > 1) {
       const newFields = fields.filter((_, i) => i !== index);
       setFields(newFields);
@@ -64,6 +67,11 @@ export default function CreateTemplateScreen() {
   };
 
   const updateField = (index: number, key: keyof Field, value: string) => {
+    // No permitir cambiar el nombre del primer campo (debe mantenerse como "Cantidad")
+    if (index === 0 && key === 'name') {
+      return;
+    }
+    
     const newFields = [...fields];
     newFields[index] = { ...newFields[index], [key]: value };
     setFields(newFields);
@@ -105,6 +113,11 @@ export default function CreateTemplateScreen() {
 
       if (!field.type) {
         fieldError.type = 'El tipo de campo es requerido';
+      }
+
+      // Validación específica para el campo "Cantidad" (primer campo)
+      if (index === 0 && field.type === 'string') {
+        fieldError.type = 'El campo "Cantidad" debe ser Número Entero o Número Decimal';
       }
 
       if (Object.keys(fieldError).length > 0) {
@@ -214,8 +227,10 @@ export default function CreateTemplateScreen() {
           {fields.map((field, index) => (
             <View key={index} style={styles.fieldContainer}>
               <View style={styles.fieldHeader}>
-                <Text style={styles.fieldTitle}>Campo {index + 1}</Text>
-                {fields.length > 1 && (
+                <Text style={styles.fieldTitle}>
+                  {index === 0 ? 'Cantidad' : `Campo ${index + 1}`}
+                </Text>
+                {fields.length > 1 && index > 0 && (
                   <TouchableOpacity 
                     style={styles.removeFieldButton}
                     onPress={() => removeField(index)}
@@ -228,11 +243,13 @@ export default function CreateTemplateScreen() {
               <FormInput
                 label="Nombre del Campo"
                 value={field.name}
-                onChangeText={(text) => updateField(index, 'name', text)}
+                onChangeText={index === 0 ? undefined : (text) => updateField(index, 'name', text)}
                 error={errors.fields?.[index]?.name}
                 icon="text-outline"
-                placeholder="Ej: Peso, Cantidad, Fecha, etc."
+                placeholder={index === 0 ? "Cantidad (campo obligatorio)" : "Ej: Peso, Volumen, Tiempo, etc."}
                 containerStyle={{ marginBottom: 12 }}
+                editable={index !== 0}
+                style={index === 0 ? styles.readOnlyInput : undefined}
               />
               
               <View style={styles.fieldRow}>
@@ -243,23 +260,25 @@ export default function CreateTemplateScreen() {
                     showsHorizontalScrollIndicator={false}
                     style={styles.typeSelector}
                   >
-                    {fieldTypes.map((type) => (
-                      <TouchableOpacity
-                        key={type.value}
-                        style={[
-                          styles.typeOption,
-                          field.type === type.value && styles.selectedTypeOption
-                        ]}
-                        onPress={() => updateField(index, 'type', type.value as Field['type'])}
-                      >
-                        <Text style={[
-                          styles.typeOptionText,
-                          field.type === type.value && styles.selectedTypeOptionText
-                        ]}>
-                          {type.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                    {fieldTypes
+                      .filter(type => index === 0 ? type.value !== 'string' : true)
+                      .map((type) => (
+                        <TouchableOpacity
+                          key={type.value}
+                          style={[
+                            styles.typeOption,
+                            field.type === type.value && styles.selectedTypeOption
+                          ]}
+                          onPress={() => updateField(index, 'type', type.value as Field['type'])}
+                        >
+                          <Text style={[
+                            styles.typeOptionText,
+                            field.type === type.value && styles.selectedTypeOptionText
+                          ]}>
+                            {type.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
                   </ScrollView>
                   {errors.fields?.[index]?.type && (
                     <Text style={styles.errorText}>{errors.fields[index].type}</Text>
@@ -401,6 +420,10 @@ const styles = StyleSheet.create({
   },
   removeFieldButton: {
     padding: 4,
+  },
+  readOnlyInput: {
+    backgroundColor: '#F3F4F6',
+    color: '#6B7280',
   },
   fieldRow: {
     marginBottom: 12,
