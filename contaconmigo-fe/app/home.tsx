@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import React, { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     SafeAreaView,
     ScrollView,
@@ -8,84 +8,190 @@ import {
     Text,
     TouchableOpacity,
     View,
+    ActivityIndicator,
+    Alert,
 } from 'react-native';
+import { ProtectedRoute } from '../components/AuthGuard';
+import { useAuth } from '../contexts/AuthContext';
+import { templatesService, Template, ApiException } from '../services/api';
+import { debugAuthState } from '../utils/debugAuth';
+import { handleAuthError, checkAndHandleExpiredToken } from '../utils/authErrorHandler';
 
-interface Counter {
-  id: string;
-  name: string;
-  count: number;
-}
+
 
 export default function HomeScreen() {
-  // Estado simulado de contadores del usuario
-  const [counters, setCounters] = useState<Counter[]>([
-    { id: '1', name: 'Vasos de agua', count: 5 },
-    { id: '2', name: 'Ejercicios completados', count: 12 },
-    { id: '3', name: 'Libros leídos', count: 3 },
-    { id: '4', name: 'Horas de estudio', count: 25 },
-  ]);
+  const { user, logout } = useAuth();
+  
+  // Estado de templates del usuario
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleHomePress = () => {
-    // Ya estamos en Home, pero podríamos hacer scroll to top
-    console.log('Navegando a Home');
+  // Cargar templates al montar el componente
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  // Actualizar templates cada vez que se enfoque la pantalla
+  useFocusEffect(
+    useCallback(() => {
+      loadTemplates();
+    }, [])
+  );
+
+  const loadTemplates = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Verificar si tenemos token antes de hacer la petición
+      const { authStorage } = await import('../services/authStorage');
+      const token = await authStorage.getAccessToken();
+      console.log('🔍 Verificando token antes de cargar templates:', token ? 'Token presente' : 'Token ausente');
+      
+      if (!token) {
+        console.log('❌ No hay token disponible, redirigiendo a login...');
+        await logout();
+        router.replace('/login');
+        return;
+      }
+      
+      // Verificar si el token está expirado proactivamente
+      const tokenExpired = await checkAndHandleExpiredToken(token, { logout });
+      if (tokenExpired) {
+        return; // El token estaba expirado y ya se manejó
+      }
+      
+      const response = await templatesService.getTemplates();
+      setTemplates(response.templates);
+    } catch (error) {
+      console.error('❌ Error cargando templates:', error);
+      
+      // Usar el manejador de errores de autenticación
+      const wasAuthError = await handleAuthError(error, { logout });
+      if (wasAuthError) {
+        return; // Era un error de autenticación y ya se manejó
+      }
+      
+      // Manejar otros tipos de errores
+      if (error instanceof ApiException) {
+        setError(`Error: ${error.detail}`);
+      } else {
+        setError('Error al cargar los templates. Inténtalo nuevamente.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleHomePress = async () => {
+    // Debug auth state y recargar templates
+    await debugAuthState();
+    loadTemplates();
   };
 
   const handleEditProfile = () => {
     router.push('/profile');
   };
 
-  const handleCreateCounter = () => {
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace('/login');
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
+  };
+
+  const handleCreateTemplate = () => {
     router.push('/create-counter');
   };
 
   // Función removida - los contadores ya no se incrementan al tocar
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.headerButton}
-          onPress={handleHomePress}
-        >
-          <Ionicons name="calculator" size={24} color="#4F46E5" />
-        </TouchableOpacity>
+    <ProtectedRoute>
+      <SafeAreaView style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={handleHomePress}
+          >
+            <Ionicons name="calculator" size={24} color="#4F46E5" />
+          </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Mis Contadores</Text>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>Mis Templates</Text>
+            {user && (
+              <Text style={styles.headerSubtitle}>¡Hola, {user.email}!</Text>
+            )}
+          </View>
 
-        <TouchableOpacity 
-          style={styles.headerButton}
-          onPress={handleEditProfile}
-        >
-          <Ionicons name="settings" size={24} color="#4F46E5" />
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={handleLogout}
+          >
+            <Ionicons name="log-out" size={24} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
 
-      {/* Body - Lista de Contadores */}
+      {/* Body - Lista de Templates */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {counters.length === 0 ? (
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4F46E5" />
+            <Text style={styles.loadingText}>Cargando templates...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+            <Text style={styles.errorTitle}>Error al cargar</Text>
+            <Text style={styles.errorSubtitle}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={loadTemplates}>
+              <Text style={styles.retryButtonText}>Reintentar</Text>
+            </TouchableOpacity>
+          </View>
+        ) : templates.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="calculator-outline" size={64} color="#D1D5DB" />
-            <Text style={styles.emptyTitle}>¡Comienza a contar!</Text>
+            <Ionicons name="document-outline" size={64} color="#D1D5DB" />
+            <Text style={styles.emptyTitle}>¡Crea tu primer template!</Text>
             <Text style={styles.emptySubtitle}>
-              Crea tu primer contador para empezar a llevar registro de lo que más te importa
+              Los templates te ayudan a organizar y llevar registro de tus datos importantes
             </Text>
           </View>
         ) : (
-          <View style={styles.countersList}>
-            {counters.map((counter) => (
-              <View
-                key={counter.id}
-                style={styles.counterCard}
+          <View style={styles.templatesList}>
+            {templates.map((template) => (
+              <TouchableOpacity
+                key={template.id}
+                style={styles.templateCard}
+                onPress={() => router.push(`/template-details?templateId=${template.id}`)}
+                activeOpacity={0.8}
               >
-                <View style={styles.counterInfo}>
-                  <Text style={styles.counterName}>{counter.name}</Text>
-                  <Text style={styles.counterDescription}>Contador personal</Text>
+                <View style={styles.templateInfo}>
+                  <Text style={styles.templateName}>{template.name}</Text>
+                  <Text style={styles.templateDescription}>
+                    {template.fields.length} campo{template.fields.length !== 1 ? 's' : ''}
+                  </Text>
+                  <View style={styles.fieldsContainer}>
+                    {template.fields.slice(0, 3).map((field, index) => (
+                      <Text key={index} style={styles.fieldName}>
+                        {field.name}
+                        {field.display_unit && ` (${field.display_unit})`}
+                      </Text>
+                    ))}
+                    {template.fields.length > 3 && (
+                      <Text style={styles.moreFields}>
+                        +{template.fields.length - 3} más
+                      </Text>
+                    )}
+                  </View>
                 </View>
-                <View style={styles.counterValue}>
-                  <Text style={styles.counterNumber}>{counter.count}</Text>
+                <View style={styles.templateActions}>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         )}
@@ -95,13 +201,14 @@ export default function HomeScreen() {
       <View style={styles.footer}>
         <TouchableOpacity 
           style={styles.addButton}
-          onPress={handleCreateCounter}
+          onPress={handleCreateTemplate}
           activeOpacity={0.8}
         >
           <Ionicons name="add" size={28} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </ProtectedRoute>
   );
 }
 
@@ -133,10 +240,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#F3F4F6',
   },
+  headerCenter: {
+    alignItems: 'center',
+    flex: 1,
+  },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#111827',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
   content: {
     flex: 1,
@@ -163,10 +279,54 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     paddingHorizontal: 20,
   },
-  countersList: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#EF4444',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorSubtitle: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 24,
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#4F46E5',
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  templatesList: {
     paddingBottom: 100, // Espacio para el botón flotante
   },
-  counterCard: {
+  templateCard: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
@@ -183,33 +343,47 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#4F46E5',
   },
-  counterInfo: {
+  templateInfo: {
     flex: 1,
     justifyContent: 'center',
   },
-  counterName: {
-    fontSize: 16,
-    fontWeight: '600',
+  templateName: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 6,
+    letterSpacing: 0.3,
   },
-  counterDescription: {
+  templateDescription: {
     fontSize: 14,
     color: '#6B7280',
+    marginBottom: 8,
   },
-  counterValue: {
+  fieldsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  fieldName: {
+    fontSize: 12,
+    color: '#4F46E5',
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  moreFields: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
+  templateActions: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#4F46E5',
-    borderRadius: 12,
-    minWidth: 60,
-    height: 60,
+    paddingLeft: 12,
   },
-  counterNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
+
   footer: {
     position: 'absolute',
     bottom: 30,

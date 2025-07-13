@@ -12,6 +12,9 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { authService, ApiException } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { PublicRoute } from '../components/AuthGuard';
 
 interface FormErrors {
   email?: string;
@@ -24,6 +27,7 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -82,12 +86,45 @@ export default function RegisterScreen() {
     if (Object.keys(newErrors).length === 0) {
       setIsLoading(true);
       try {
-        // Aquí iría la lógica de registro con tu backend
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Simulación
-        // Redirigir al Home después del registro exitoso
-        router.replace('/home');
+        // Llamada al backend para registrar el usuario
+        const response = await authService.signUp({
+          email: email.trim(),
+          password: password
+        });
+        
+        // Mostrar mensaje de éxito
+        Alert.alert(
+          'Registro exitoso',
+          response.message || 'Tu cuenta ha sido creada exitosamente. Revisa tu correo electrónico para verificar tu cuenta.',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.replace('/login') // Redirigir al login después del registro
+            }
+          ]
+        );
+        
       } catch (error) {
-        Alert.alert('Error', 'Hubo un problema al registrar tu cuenta. Inténtalo nuevamente.');
+        let errorMessage = 'Hubo un problema al registrar tu cuenta. Inténtalo nuevamente.';
+        
+        if (error instanceof ApiException) {
+          // Manejar errores específicos del backend
+          switch (error.status) {
+            case 400:
+              errorMessage = 'Los datos proporcionados no son válidos. Verifica tu información.';
+              break;
+            case 409:
+              errorMessage = 'Ya existe una cuenta con este correo electrónico.';
+              break;
+            case 0:
+              errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
+              break;
+            default:
+              errorMessage = error.detail || errorMessage;
+          }
+        }
+        
+        Alert.alert('Error de registro', errorMessage);
       } finally {
         setIsLoading(false);
       }
@@ -104,10 +141,11 @@ export default function RegisterScreen() {
   const passwordStrength = getPasswordStrength();
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <PublicRoute>
+      <KeyboardAvoidingView 
+        style={styles.container} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.title}>Conta conmigo</Text>
@@ -211,7 +249,8 @@ export default function RegisterScreen() {
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </PublicRoute>
   );
 }
 

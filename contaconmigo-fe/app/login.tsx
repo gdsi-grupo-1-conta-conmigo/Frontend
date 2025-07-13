@@ -12,6 +12,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { authService, ApiException } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { PublicRoute } from '../components/AuthGuard';
 
 interface FormErrors {
   email?: string;
@@ -24,6 +27,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -51,12 +55,49 @@ export default function LoginScreen() {
     if (Object.keys(newErrors).length === 0) {
       setIsLoading(true);
       try {
-        // Aquí iría la lógica de login con tu backend
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Simulación
-        // Redirigir al Home después del login exitoso
+        // Llamada al backend para autenticar el usuario
+        const response = await authService.login({
+          email: email.trim(),
+          password: password
+        });
+        
+        // Guardar la sesión del usuario usando el contexto
+        console.log('🔐 Guardando sesión con token:', response.access_token ? 'Token presente' : 'Token ausente');
+        await login(
+          {
+            access_token: response.access_token,
+            refresh_token: response.refresh_token
+          },
+          response.user
+        );
+        
+        console.log('✅ Login exitoso para:', response.user.email);
+        
+        // Redirigir directamente a la pantalla principal
+        console.log('Login exitoso para:', response.user.email);
         router.replace('/home');
+        
       } catch (error) {
-        Alert.alert('Error', 'Credenciales incorrectas. Inténtalo nuevamente.');
+        let errorMessage = 'Error al iniciar sesión. Verifica tus credenciales.';
+        
+        if (error instanceof ApiException) {
+          // Manejar errores específicos del backend
+          switch (error.status) {
+            case 401:
+              errorMessage = 'Credenciales incorrectas. Verifica tu email y contraseña.';
+              break;
+            case 400:
+              errorMessage = 'Datos inválidos. Verifica la información ingresada.';
+              break;
+            case 0:
+              errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
+              break;
+            default:
+              errorMessage = error.detail || errorMessage;
+          }
+        }
+        
+        Alert.alert('Error de inicio de sesión', errorMessage);
       } finally {
         setIsLoading(false);
       }
@@ -68,10 +109,11 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <PublicRoute>
+      <KeyboardAvoidingView 
+        style={styles.container} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.title}>Conta conmigo</Text>
@@ -160,7 +202,8 @@ export default function LoginScreen() {
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </PublicRoute>
   );
 }
 
