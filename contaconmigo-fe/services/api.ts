@@ -117,6 +117,20 @@ export interface TemplatesResponse {
   templates: Template[];
 }
 
+// Tipos para los datos del template (historial)
+export interface TemplateDataEntry {
+  id: string;
+  template_id: string;
+  user_id: string;
+  values: { [key: string]: any };
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface TemplateDataResponse {
+  data: TemplateDataEntry[];
+}
+
 // Servicios de autenticación
 export const authService = {
   // Registro de usuario
@@ -375,6 +389,149 @@ export const templatesService = {
       return result;
     } catch (error) {
       console.error('❌ Error en submitTemplateData:', error);
+      console.error('❌ Error tipo:', typeof error);
+      console.error('❌ Error instanceof ApiException:', error instanceof ApiException);
+      if (error instanceof ApiException) {
+        console.error('❌ ApiException status:', error.status);
+        console.error('❌ ApiException detail:', error.detail);
+      }
+      throw error;
+    }
+  },
+
+  async updateTemplate(templateId: string, templateData: {
+    name: string;
+    fields: Array<{
+      name: string;
+      type: string;
+      display_unit?: string;
+    }>;
+  }): Promise<{ message: string }> {
+    const endpoint = `/templates/${templateId}`;
+    console.log('✏️ updateTemplate iniciado');
+    console.log('✏️ templateId:', templateId);
+    console.log('✏️ templateData:', templateData);
+    console.log('✏️ endpoint:', endpoint);
+    
+    try {
+      console.log('✏️ Llamando a makeAuthenticatedRequest...');
+      const result = await makeAuthenticatedRequest<{ message: string }>(endpoint, {
+        method: 'PUT',
+        body: JSON.stringify(templateData),
+      });
+      console.log('✅ updateTemplate exitoso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Error en updateTemplate:', error);
+      console.error('❌ Error tipo:', typeof error);
+      console.error('❌ Error instanceof ApiException:', error instanceof ApiException);
+      if (error instanceof ApiException) {
+        console.error('❌ ApiException status:', error.status);
+        console.error('❌ ApiException detail:', error.detail);
+      }
+      throw error;
+    }
+  },
+
+  // Obtener historial de datos de un template
+  async getTemplateData(templateId: string): Promise<TemplateDataResponse> {
+    const endpoint = `/templates/${templateId}/data`;
+    console.log('📊 getTemplateData iniciado');
+    console.log('📊 templateId:', templateId);
+    console.log('📊 endpoint:', endpoint);
+    
+    try {
+      console.log('📊 Llamando a makeAuthenticatedRequest...');
+      const result = await makeAuthenticatedRequest<TemplateDataResponse>(endpoint, {
+        method: 'GET',
+      });
+      console.log('✅ getTemplateData exitoso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Error en getTemplateData:', error);
+      console.error('❌ Error tipo:', typeof error);
+      console.error('❌ Error instanceof ApiException:', error instanceof ApiException);
+      if (error instanceof ApiException) {
+        console.error('❌ ApiException status:', error.status);
+        console.error('❌ ApiException detail:', error.detail);
+      }
+      throw error;
+    }
+  },
+
+  // Obtener un registro específico de datos de un template
+  async getTemplateDataEntry(templateId: string, dataId: string): Promise<TemplateDataEntry> {
+    const endpoint = `/templates/${templateId}/data/${dataId}`;
+    console.log('📄 getTemplateDataEntry iniciado');
+    console.log('📄 templateId:', templateId);
+    console.log('📄 dataId:', dataId);
+    console.log('📄 endpoint:', endpoint);
+    
+    try {
+      console.log('📄 Llamando a makeAuthenticatedRequest...');
+      const result = await makeAuthenticatedRequest<TemplateDataEntry>(endpoint, {
+        method: 'GET',
+      });
+      console.log('✅ getTemplateDataEntry exitoso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Error en getTemplateDataEntry:', error);
+      console.error('❌ Error tipo:', typeof error);
+      console.error('❌ Error instanceof ApiException:', error instanceof ApiException);
+      if (error instanceof ApiException) {
+        console.error('❌ ApiException status:', error.status);
+        console.error('❌ ApiException detail:', error.detail);
+      }
+      throw error;
+    }
+  },
+
+  // Eliminar un registro específico de datos de un template
+  async deleteTemplateData(templateId: string, dataId: string): Promise<{ message: string; data_id: string; deleted_data: any }> {
+    const endpoint = `/templates/${templateId}/data/${dataId}`;
+    console.log('🗑️ deleteTemplateData iniciado');
+    console.log('🗑️ templateId:', templateId);
+    console.log('🗑️ dataId:', dataId);
+    console.log('🗑️ endpoint:', endpoint);
+    
+    try {
+      console.log('🗑️ Llamando a makeAuthenticatedRequest...');
+      const result = await makeAuthenticatedRequest<{ message: string; data_id: string; deleted_data: any }>(endpoint, {
+        method: 'DELETE',
+      });
+      console.log('✅ deleteTemplateData exitoso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Error en deleteTemplateData:', error);
+      console.error('❌ Error tipo:', typeof error);
+      console.error('❌ Error instanceof ApiException:', error instanceof ApiException);
+      if (error instanceof ApiException) {
+        console.error('❌ ApiException status:', error.status);
+        console.error('❌ ApiException detail:', error.detail);
+      }
+      throw error;
+    }
+  },
+
+  // Actualizar un registro específico de datos de un template
+  async updateTemplateData(templateId: string, dataId: string, data: { values: { [key: string]: any } }): Promise<{ message: string; data_id: string; updated_data: any }> {
+    const endpoint = `/templates/${templateId}/data/${dataId}`;
+    console.log('✏️ updateTemplateData iniciado');
+    console.log('✏️ templateId:', templateId);
+    console.log('✏️ dataId:', dataId);
+    console.log('✏️ data:', data);
+    console.log('✏️ endpoint:', endpoint);
+    
+    try {
+      console.log('✏️ Llamando a makeAuthenticatedRequest...');
+      const result = await makeAuthenticatedRequest<{ message: string; data_id: string; updated_data: any }>(endpoint, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      console.log('✅ updateTemplateData exitoso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Error en updateTemplateData:', error);
       console.error('❌ Error tipo:', typeof error);
       console.error('❌ Error instanceof ApiException:', error instanceof ApiException);
       if (error instanceof ApiException) {

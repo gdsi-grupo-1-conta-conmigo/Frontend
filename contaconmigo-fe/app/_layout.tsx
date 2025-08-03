@@ -88,6 +88,9 @@ export default function RootLayout() {
           <Stack.Screen name="count-entry" options={{ 
             headerShown: false,
           }} />
+          <Stack.Screen name="edit-template" options={{ 
+            headerShown: false,
+          }} />
           <Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar style="auto" />

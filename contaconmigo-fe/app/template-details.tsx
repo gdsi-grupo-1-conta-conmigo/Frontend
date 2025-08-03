@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     SafeAreaView,
     ScrollView,
@@ -31,6 +31,16 @@ export default function TemplateDetailsScreen() {
       loadTemplateDetails();
     }
   }, [templateId]);
+
+  // Actualizar detalles del template cada vez que se enfoque la pantalla
+  useFocusEffect(
+    useCallback(() => {
+      if (templateId) {
+        console.log('🔄 Pantalla de detalles enfocada - actualizando datos del template');
+        loadTemplateDetails();
+      }
+    }, [templateId])
+  );
 
   const loadTemplateDetails = async () => {
     if (!templateId) {
@@ -94,8 +104,16 @@ export default function TemplateDetailsScreen() {
   };
 
   const handleEdit = () => {
-    // TODO: Implementar edición del template
-    Alert.alert('Próximamente', 'La funcionalidad de edición estará disponible pronto');
+    console.log('✏️ handleEdit ejecutado - navegando a editar template');
+    console.log('✏️ templateId:', templateId);
+    
+    if (!templateId) {
+      console.log('❌ No hay templateId, no se puede navegar');
+      return;
+    }
+    
+    // Navegar a la pantalla de editar template con el templateId
+    router.push(`/edit-template?templateId=${templateId}`);
   };
 
   const handleCount = () => {
@@ -109,6 +127,19 @@ export default function TemplateDetailsScreen() {
     
     // Navegar a la pantalla de contar con el templateId
     router.push(`/count-entry?templateId=${templateId}`);
+  };
+
+  const handleHistory = () => {
+    console.log('📊 handleHistory ejecutado - navegando a historial');
+    console.log('📊 templateId:', templateId);
+    
+    if (!templateId) {
+      console.log('❌ No hay templateId, no se puede navegar');
+      return;
+    }
+    
+    // Navegar a la pantalla de historial con el templateId
+    router.push(`/history?templateId=${templateId}`);
   };
 
   const handleDelete = () => {
@@ -336,6 +367,17 @@ export default function TemplateDetailsScreen() {
                   Contar
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.historyButton, isLoading && styles.disabledButton]} 
+                onPress={handleHistory}
+                disabled={isLoading}
+              >
+                <Ionicons name="bar-chart-outline" size={20} color={isLoading ? "#9CA3AF" : "#F59E0B"} />
+                <Text style={[styles.actionButtonText, styles.historyButtonText, isLoading && styles.disabledButtonText]}>
+                  Historial
+                </Text>
+              </TouchableOpacity>
               
               <TouchableOpacity 
                 style={[styles.actionButton, isLoading && styles.disabledButton]} 
@@ -522,6 +564,12 @@ const styles = StyleSheet.create({
   },
   countButtonText: {
     color: '#10B981',
+  },
+  historyButton: {
+    backgroundColor: '#FFFBEB',
+  },
+  historyButtonText: {
+    color: '#F59E0B',
   },
   deleteButton: {
     backgroundColor: '#FEF2F2',
