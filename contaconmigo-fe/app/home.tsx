@@ -24,6 +24,7 @@ export default function HomeScreen() {
   
   // Estado de templates del usuario
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [templateCounters, setTemplateCounters] = useState<{ [templateId: string]: number }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +39,42 @@ export default function HomeScreen() {
       loadTemplates();
     }, [])
   );
+
+  const loadTemplateCounters = async (templateList: Template[]) => {
+    console.log('🔢 Cargando contadores para templates...');
+    const counters: { [templateId: string]: number } = {};
+    
+    try {
+      // Cargar contadores para cada template en paralelo
+      const counterPromises = templateList.map(async (template) => {
+        try {
+          console.log(`🔢 Cargando contador para template: ${template.name} (${template.id})`);
+          const sumResult = await templatesService.getTemplateSum(template.id);
+          console.log(`✅ Contador cargado para ${template.name}:`, sumResult.total_cantidad);
+          return { templateId: template.id, count: sumResult.total_cantidad };
+        } catch (error) {
+          console.error(`❌ Error cargando contador para template ${template.name}:`, error);
+          // Si hay error, usar 0 como valor por defecto
+          return { templateId: template.id, count: 0 };
+        }
+      });
+      
+      const results = await Promise.all(counterPromises);
+      
+      // Construir el objeto de contadores
+      results.forEach(({ templateId, count }) => {
+        counters[templateId] = count;
+      });
+      
+      console.log('✅ Todos los contadores cargados:', counters);
+      setTemplateCounters(counters);
+      
+    } catch (error) {
+      console.error('❌ Error general cargando contadores:', error);
+      // En caso de error general, mantener contadores vacíos
+      setTemplateCounters({});
+    }
+  };
 
   const loadTemplates = async () => {
     try {
@@ -64,6 +101,9 @@ export default function HomeScreen() {
       
       const response = await templatesService.getTemplates();
       setTemplates(response.templates);
+      
+      // Cargar contadores para todos los templates
+      await loadTemplateCounters(response.templates);
     } catch (error) {
       console.error('❌ Error cargando templates:', error);
       
@@ -170,7 +210,18 @@ export default function HomeScreen() {
                 activeOpacity={0.8}
               >
                 <View style={styles.templateInfo}>
-                  <Text style={styles.templateName}>{template.name}</Text>
+                  <View style={styles.templateHeader}>
+                    <Text style={styles.templateName}>{template.name}</Text>
+                    <View style={styles.counterContainer}>
+                      <Text style={styles.counterValue}>
+                        {templateCounters[template.id] !== undefined 
+                          ? templateCounters[template.id].toLocaleString() 
+                          : '...'
+                        }
+                      </Text>
+                      <Text style={styles.counterLabel}>Total</Text>
+                    </View>
+                  </View>
                   <Text style={styles.templateDescription}>
                     {template.fields.length} campo{template.fields.length !== 1 ? 's' : ''}
                   </Text>
@@ -347,12 +398,32 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
+  templateHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
   templateName: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#111827',
-    marginBottom: 6,
     letterSpacing: 0.3,
+    flex: 1,
+  },
+  counterContainer: {
+    alignItems: 'flex-end',
+    marginLeft: 16,
+  },
+  counterValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#10B981',
+  },
+  counterLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 2,
   },
   templateDescription: {
     fontSize: 14,

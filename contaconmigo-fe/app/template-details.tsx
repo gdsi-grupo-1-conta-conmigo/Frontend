@@ -22,6 +22,8 @@ export default function TemplateDetailsScreen() {
   
   // Estado del template
   const [template, setTemplate] = useState<Template | null>(null);
+  const [templateCounter, setTemplateCounter] = useState<number | null>(null);
+  const [hasData, setHasData] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,9 +74,27 @@ export default function TemplateDetailsScreen() {
       }
       
       console.log('📡 Cargando detalles del template:', templateId);
-      const response = await templatesService.getTemplate(templateId);
-      console.log('✅ Detalles del template cargados:', response);
-      setTemplate(response);
+      
+      // Cargar template, contador y verificar datos en paralelo
+      const [templateResponse, counterResponse, dataResponse] = await Promise.all([
+        templatesService.getTemplate(templateId),
+        templatesService.getTemplateSum(templateId).catch(error => {
+          console.error('❌ Error cargando contador:', error);
+          return { total_cantidad: 0 }; // Valor por defecto si falla
+        }),
+        templatesService.getTemplateData(templateId).catch(error => {
+          console.error('❌ Error verificando datos del template:', error);
+          return { data: [] }; // Valor por defecto si falla
+        })
+      ]);
+      
+      console.log('✅ Detalles del template cargados:', templateResponse);
+      console.log('✅ Contador del template cargado:', counterResponse.total_cantidad);
+      console.log('✅ Datos del template verificados:', dataResponse.data.length, 'registros encontrados');
+      
+      setTemplate(templateResponse);
+      setTemplateCounter(counterResponse.total_cantidad);
+      setHasData(dataResponse.data.length > 0);
     } catch (error) {
       console.error('❌ Error cargando detalles del template:', error);
       
@@ -311,6 +331,15 @@ export default function TemplateDetailsScreen() {
           <View style={styles.section}>
             <View style={styles.templateHeader}>
               <Text style={styles.templateName}>{template.name}</Text>
+              
+              {/* Contador del template */}
+              <View style={styles.counterSection}>
+                <Text style={styles.counterValue}>
+                  {templateCounter !== null ? templateCounter.toLocaleString() : '...'}
+                </Text>
+                <Text style={styles.counterLabel}>Total acumulado</Text>
+              </View>
+              
               <View style={styles.templateMeta}>
                 <Text style={styles.templateMetaText}>
                   {template.fields.length} campo{template.fields.length !== 1 ? 's' : ''}
@@ -380,15 +409,34 @@ export default function TemplateDetailsScreen() {
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={[styles.actionButton, isLoading && styles.disabledButton]} 
+                style={[
+                  styles.actionButton, 
+                  (isLoading || hasData) && styles.disabledButton
+                ]} 
                 onPress={handleEdit}
-                disabled={isLoading}
+                disabled={isLoading || hasData}
               >
-                <Ionicons name="create-outline" size={20} color={isLoading ? "#9CA3AF" : "#4F46E5"} />
-                <Text style={[styles.actionButtonText, isLoading && styles.disabledButtonText]}>
+                <Ionicons 
+                  name="create-outline" 
+                  size={20} 
+                  color={(isLoading || hasData) ? "#9CA3AF" : "#4F46E5"} 
+                />
+                <Text style={[
+                  styles.actionButtonText, 
+                  (isLoading || hasData) && styles.disabledButtonText
+                ]}>
                   Editar Template
                 </Text>
               </TouchableOpacity>
+              
+              {hasData && (
+                <View style={styles.infoMessage}>
+                  <Ionicons name="information-circle-outline" size={16} color="#6B7280" />
+                  <Text style={styles.infoMessageText}>
+                    No se puede editar el template porque ya tiene datos cargados
+                  </Text>
+                </View>
+              )}
               
               <TouchableOpacity 
                 style={[
@@ -488,7 +536,28 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#111827',
-    marginBottom: 8,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  counterSection: {
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  counterValue: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#10B981',
+    marginBottom: 4,
+  },
+  counterLabel: {
+    fontSize: 14,
+    color: '#059669',
     textAlign: 'center',
   },
   templateMeta: {
@@ -587,6 +656,21 @@ const styles = StyleSheet.create({
   },
   disabledButtonText: {
     color: '#9CA3AF',
+  },
+  infoMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+    marginTop: -6,
+  },
+  infoMessageText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
   },
   loadingContainer: {
     flex: 1,

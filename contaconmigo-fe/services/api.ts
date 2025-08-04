@@ -541,6 +541,32 @@ export const templatesService = {
       throw error;
     }
   },
+
+  // Obtener la sumatoria del campo 'Cantidad' de un template
+  async getTemplateSum(templateId: string): Promise<{ template_id: string; total_cantidad: number; registros_procesados: number; total_registros: number }> {
+    const endpoint = `/templates/${templateId}/data/sum`;
+    console.log('🔢 getTemplateSum iniciado');
+    console.log('🔢 templateId:', templateId);
+    console.log('🔢 endpoint:', endpoint);
+    
+    try {
+      console.log('🔢 Llamando a makeAuthenticatedRequest...');
+      const result = await makeAuthenticatedRequest<{ template_id: string; total_cantidad: number; registros_procesados: number; total_registros: number }>(endpoint, {
+        method: 'GET',
+      });
+      console.log('✅ getTemplateSum exitoso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Error en getTemplateSum:', error);
+      console.error('❌ Error tipo:', typeof error);
+      console.error('❌ Error instanceof ApiException:', error instanceof ApiException);
+      if (error instanceof ApiException) {
+        console.error('❌ ApiException status:', error.status);
+        console.error('❌ ApiException detail:', error.detail);
+      }
+      throw error;
+    }
+  },
 };
 
 // Función para verificar si el servidor está disponible
