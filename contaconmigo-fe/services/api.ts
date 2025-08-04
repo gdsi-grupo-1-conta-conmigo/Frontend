@@ -297,7 +297,7 @@ async function refreshAccessToken(): Promise<string | null> {
 export const templatesService = {
   // Obtener lista de templates del usuario
   async getTemplates(): Promise<TemplatesResponse> {
-    return makeAuthenticatedRequest<TemplatesResponse>('/templates');
+    return makeAuthenticatedRequest<TemplatesResponse>('/templates/');
   },
 
   // Crear un nuevo template
@@ -312,7 +312,7 @@ export const templatesService = {
     console.log('🚀 Enviando datos al backend:', templateData);
     console.log('🚀 Body serializado:', JSON.stringify(templateData));
     
-    return makeAuthenticatedRequest<{ message: string; template_id: string }>('/templates', {
+    return makeAuthenticatedRequest<{ message: string; template_id: string }>('/templates/', {
       method: 'POST',
       body: JSON.stringify(templateData),
     });
