@@ -10,6 +10,7 @@ import {
     View,
     ActivityIndicator,
     Alert,
+    Linking,
 } from 'react-native';
 import { ProtectedRoute } from '../components/AuthGuard';
 import { useAuth } from '../contexts/AuthContext';
@@ -147,6 +148,25 @@ export default function HomeScreen() {
     router.push('/create-counter');
   };
 
+  const handleTelegramBot = async () => {
+    try {
+      const telegramUrl = 'https://t.me/gdsi_conta_conmigo_bot';
+      const canOpen = await Linking.canOpenURL(telegramUrl);
+      
+      if (canOpen) {
+        await Linking.openURL(telegramUrl);
+      } else {
+        Alert.alert(
+          'Error',
+          'No se pudo abrir el enlace de Telegram. Asegúrate de tener Telegram instalado.'
+        );
+      }
+    } catch (error) {
+      console.error('Error abriendo enlace de Telegram:', error);
+      Alert.alert('Error', 'No se pudo abrir el enlace de Telegram.');
+    }
+  };
+
   // Función removida - los contadores ya no se incrementan al tocar
 
   return (
@@ -248,8 +268,16 @@ export default function HomeScreen() {
         )}
       </ScrollView>
 
-      {/* Footer - Botón Agregar */}
+      {/* Footer - Botones */}
       <View style={styles.footer}>
+        <TouchableOpacity 
+          style={styles.telegramButton}
+          onPress={handleTelegramBot}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="phone-portrait" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+        
         <TouchableOpacity 
           style={styles.addButton}
           onPress={handleCreateTemplate}
@@ -460,7 +488,10 @@ const styles = StyleSheet.create({
     bottom: 30,
     left: 0,
     right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+    gap: 16,
   },
   addButton: {
     width: 56,
@@ -470,6 +501,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#4F46E5',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  telegramButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#0088CC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#0088CC',
     shadowOffset: {
       width: 0,
       height: 4,
