@@ -1,13 +1,13 @@
 {
   "expo": {
     "name": "Conta conmigo",
-    "slug": "contaconmigo-fe",
+    "slug": "conta-conmigo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -34,18 +34,17 @@
       "baseUrl": "/Frontend/contaconmigo-fe/"
     },
     "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#4F46E5"
-        }
-      ]
+      "expo-router"
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "92b9c56d-99df-4d93-82b5-7ea2167e82c3"
+      }
+    },
+    "owner": "mpata"
   }
 }
