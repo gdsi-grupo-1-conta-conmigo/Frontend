@@ -318,12 +318,7 @@ export default function TemplateDetailsScreen() {
             <Text style={styles.headerTitle}>Detalles del Template</Text>
           </View>
 
-          <TouchableOpacity 
-            style={styles.headerButton}
-            onPress={handleEdit}
-          >
-            <Ionicons name="create-outline" size={24} color="#4F46E5" />
-          </TouchableOpacity>
+          <View style={styles.headerButton} />
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
